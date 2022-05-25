@@ -83,7 +83,7 @@ void MainWindow::onActionAboutTriggered()
     QLabel* textLabel = new QLabel;
     QVBoxLayout *aboutLayot = new QVBoxLayout(aboutWindow);
     textLabel->setText(tr("<h2>TcpDeviceEmulator</h2>"
-                          "<h4>Version 1.0.3</h4>"
+                          "<h4>Version 1.0.4</h4>"
                           "<p>Simple TCP Server (device emulator)</p>"));
 
     aboutLayot->addWidget(textLabel, 0, Qt::AlignCenter);

@@ -139,6 +139,7 @@ void MyServerView::onReadClient()
 
     QByteArray data(snd_str.toStdString().c_str());
     sendToClient(pClientSocket, data);
+    ui->textEdit->append("Server resp: " + snd_str);
 }
 
 /**
