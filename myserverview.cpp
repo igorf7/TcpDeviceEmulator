@@ -107,15 +107,18 @@ void MyServerView::onReadClient()
         rcv_str.chop(1); // Delete EOL
     }
 
-    ui->textEdit->append(rcv_str);
+    ui->textEdit->append("Received: " + rcv_str);
 
-    if (!cmdContainer.contains(rcv_str)) {
+    snd_str = "";
+
+    if (cmdContainer.contains(rcv_str)) {
+        snd_str = cmdContainer.value(rcv_str); // response
+    }
+    else if (ui->echoCheckBox->isChecked()) {
         snd_str = rcv_str; // echo
     }
-    else {
-        snd_str = cmdContainer.value(rcv_str); // response
-        if (snd_str == "") return;             // no response
-    }
+
+    if (snd_str == "") return;             // no response
 
     switch(ui->eolComboBox->currentIndex()) // Add EOL to Tx data
     {
@@ -139,7 +142,7 @@ void MyServerView::onReadClient()
 
     QByteArray data(snd_str.toStdString().c_str());
     sendToClient(pClientSocket, data);
-    ui->textEdit->append("Server resp: " + snd_str);
+    ui->textEdit->append("Sended: " + snd_str);
 }
 
 /**
