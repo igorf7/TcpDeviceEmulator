@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>405</width>
-    <height>320</height>
+    <width>313</width>
+    <height>370</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -66,7 +66,7 @@
           <string>Echo On</string>
          </property>
          <property name="checked">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
         </widget>
        </item>
@@ -128,12 +128,12 @@
        </item>
        <item>
         <property name="text">
-         <string>EOL: &lt;CR+LF&gt;</string>
+         <string>EOL: &lt;CR&gt;&lt;LF&gt;</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>EOL: &lt;LF+CR&gt;</string>
+         <string>EOL: &lt;LF&gt;&lt;CR&gt;</string>
         </property>
        </item>
        <item>

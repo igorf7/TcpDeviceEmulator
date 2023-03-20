@@ -1,4 +1,4 @@
-﻿#ifndef MAINWINDOW_H
+#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
 #include "myserverview.h"
@@ -20,6 +20,9 @@ public:
 
 signals:
     void setContainer(const QHash<QString, QString> &container);
+
+public slots:
+    void onSetTitle(const QString &title);
 
 private slots:
     void onActionQuitTriggered();

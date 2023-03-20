@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    this->setWindowTitle("TcpDeviceEmulator (Server)");
+    this->setWindowTitle("TCP Device Emulator (Server)");
 
     QWidget* mainWidget = new QWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout;
@@ -32,9 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::setContainer,
             serverView,&MyServerView::onSetContainer);
 
-    /* Some default data
-    ReqRespData.insert("*IDN?", "Device Emulator");
-    ReqRespData.insert("MEAS:PRES?", "+1.0145942E+000"); */
+    connect(serverView, &MyServerView::setTitle, this, &MainWindow::onSetTitle);
 
     QFile file("comands.db");
     if (file.exists()) {
@@ -61,6 +59,15 @@ MainWindow::~MainWindow()
 }
 
 /**
+ * @brief MainWindow::onSetTitle
+ * @param title
+ */
+void MainWindow::onSetTitle(const QString &title)
+{
+    this->setWindowTitle(title);
+}
+
+/**
  * @brief Menu "Quit" action handler
  */
 void MainWindow::onActionQuitTriggered()
@@ -77,7 +84,10 @@ void MainWindow::onActionAboutTriggered()
     aboutWindow->setWindowTitle("About");
     aboutWindow->resize(350, 230);
     aboutWindow->setModal(true);
-    aboutWindow->setWindowFlags(Qt::Drawer);
+
+    aboutWindow->setWindowFlags((aboutWindow->windowFlags())
+                                & (~Qt::WindowContextHelpButtonHint));
+
     aboutWindow->setAttribute(Qt::WA_DeleteOnClose);
 
     QLabel* textLabel = new QLabel;
@@ -99,7 +109,10 @@ void MainWindow::onActionReqRespEditTriggered()
     editorWindow->setWindowTitle("Request/Response Editor");
     editorWindow->resize(440, 300);
     editorWindow->setModal(true);
-    editorWindow->setWindowFlags(Qt::Drawer);
+
+    editorWindow->setWindowFlags((editorWindow->windowFlags())
+                                  & (~Qt::WindowContextHelpButtonHint));
+
     editorWindow->setAttribute(Qt::WA_DeleteOnClose);
 
     ReqRespTable = new QTableWidget(0, 2);

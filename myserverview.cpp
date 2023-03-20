@@ -91,58 +91,202 @@ void MyServerView::onNewConnection()
  */
 void MyServerView::onReadClient()
 {
-    QString rcv_str, snd_str;
+    QString receiveData;
 
     QTcpSocket* pClientSocket = (QTcpSocket*)sender();
 
     for (;;) {
-        rcv_str += pClientSocket->readAll();
+        receiveData += pClientSocket->readAll();
         if (pClientSocket->bytesAvailable() < 1) {
             break;
         }
     }
 
-    while ((rcv_str.right(1) == '\r') || (rcv_str.right(1) == '\n'))
+    while ((receiveData.right(1) == '\r') || (receiveData.right(1) == '\n'))
     {
-        rcv_str.chop(1); // Delete EOL
+        receiveData.chop(1); // Delete EOL
     }
 
-    ui->textEdit->append("Received: " + rcv_str);
+    ui->textEdit->append("Received: " + receiveData);
 
-    snd_str = "";
+    strTransmitData = "";
 
-    if (cmdContainer.contains(rcv_str)) {
-        snd_str = cmdContainer.value(rcv_str); // response
+    if (ui->echoCheckBox->isChecked()) {
+        strTransmitData = receiveData; // echo
     }
-    else if (ui->echoCheckBox->isChecked()) {
-        snd_str = rcv_str; // echo
+    else {
+        switch (DeviceType)
+        {
+        case Unknown:
+            runDefaultParser(receiveData);
+            break;
+        case Multimeter:
+            runMultimeterParser(receiveData);
+            break;
+        case Chamber:
+            runChamberParser(receiveData);
+            break;
+        case Calibrator:
+            runCalibratorParser(receiveData);
+            break;
+        }
     }
 
-    if (snd_str == "") return;             // no response
+    if (strTransmitData == "") return;         // no response
 
     switch(ui->eolComboBox->currentIndex()) // Add EOL to Tx data
     {
     case 0:
-        snd_str.append('\n');
+        strTransmitData.append('\n');
         break;
     case 1:
-        snd_str.append('\r');
+        strTransmitData.append('\r');
         break;
     case 2:
-        snd_str.append('\r');
-        snd_str.append('\n');
+        strTransmitData.append('\r');
+        strTransmitData.append('\n');
         break;
     case 3:
-        snd_str.append('\n');
-        snd_str.append('\r');
+        strTransmitData.append('\n');
+        strTransmitData.append('\r');
         break;
     default:
         break;
     }
 
-    QByteArray data(snd_str.toStdString().c_str());
+    QByteArray data(strTransmitData.toStdString().c_str());
     sendToClient(pClientSocket, data);
-    ui->textEdit->append("Sended: " + snd_str);
+    ui->textEdit->append("Sended: " + strTransmitData);
+}
+
+void MyServerView::runDefaultParser(const QString &rxdata)
+{
+    if (cmdContainer.contains(strReceiveData)) {
+        strTransmitData = cmdContainer.value(rxdata); // response
+    }
+}
+
+void MyServerView::runMultimeterParser(const QString &rxdata)
+{
+    if (rxdata == "*IDN?") {
+        clbRun = false;
+        strTransmitData = "Multimeter Emulator";
+    }
+    else if (rxdata == "MEAS:VOLT:DC?") {
+        strTransmitData = "+5.57703936E+00";
+    }
+    else if (rxdata == "MEAS:VOLT:DC? 0.1") {
+        strTransmitData = "+5.12343936E-03";
+    }
+    else if (rxdata == "MEAS:VOLT:DC? 10") {
+        if (!clbRun) {
+            strTransmitData = "+5.12343936E+00";
+        }
+        else {
+            voltOut = 0.4 + 0.0015 * ((double)Dac1 - 0.5 * (double)Dac2 ) + 4.5 *
+                    ((double)Dac2 / 4095.0) * ((pressValue - 0.12)/(2.55 - 0.12));
+            if (voltOut < 0.01) voltOut = 0.01;
+            if (voltOut > 4.99) voltOut = 4.99;
+            strTransmitData = QString::number(voltOut, 'E', 8);
+        }
+    }
+    else if (rxdata.left(5) == "#PRSP") {
+        clbRun = true;
+        strTransmitData = rxdata;
+        strTransmitData.remove(0, 5);
+        pressValue = strTransmitData.toDouble();
+    }
+    else if (rxdata.left(5) == "#DAC1") {
+        strTransmitData = rxdata;
+        strTransmitData.remove(0, 5);
+        Dac1 = strTransmitData.toInt();
+    }
+    else if (rxdata.left(5) == "#DAC2") {
+        strTransmitData = rxdata;
+        strTransmitData.remove(0, 5);
+        Dac2 = strTransmitData.toInt();
+    }
+}
+
+void MyServerView::runChamberParser(const QString &rxdata)
+{
+    if (rxdata == "$00E -040.0 0101010001000000") {
+        strChamberResponse = "-040.0 -040.0 0101010001000000";
+        strTransmitData = "0";
+    }
+    else if (rxdata == "$00E -005.0 0101010001000000") {
+        strChamberResponse = "-005.0 -005.0 0101010001000000";
+        strTransmitData = "0";
+    }
+    else if (rxdata == "$00E 0030.0 0101010001000000") {
+        strChamberResponse = "0030.0 0030.0 0101010001000000";
+        strTransmitData = "0";
+    }
+    else if (rxdata == "$00E 0065.0 0101010001000000") {
+        strChamberResponse = "0065.0 0065.0 0101010001000000";
+        strTransmitData = "0";
+    }
+    else if (rxdata == "$00E 0100.0 0101010001000000") {
+        strChamberResponse = "0100.0 0100.0 0101010001000000";
+        strTransmitData = "0";
+    }
+    else if (rxdata == "$00I") {
+        strTransmitData = strChamberResponse;
+    }
+}
+
+void MyServerView::runCalibratorParser(const QString &rxdata)
+{
+    if (rxdata == "SOURCE:PRES:LEV:IMM:AMPL 0.12") {
+        strPressSetpoint = "+1.2000003E-001";
+        strTransmitData = "";
+    }
+    else if (rxdata == "SOURCE:PRES:LEV:IMM:AMPL 2.55") {
+        strPressSetpoint = "+2.5499999E+000";
+        strTransmitData = "";
+    }
+    else if (rxdata == "SOURCE:PRES:LEV:IMM:AMPL?") {
+        strTransmitData = strPressSetpoint;
+    }
+    else if (rxdata == "MEAS:PRES?") {
+        strTransmitData = strPressSetpoint;
+    }
+    else if (rxdata == "OUTP:MODE CONT") {
+        pressMode = 1;
+        strTransmitData = "";
+    }
+    else if (rxdata == "OUTP:STAT?") {
+        strTransmitData = QString::number(pressMode);
+        pressMode = 0;
+    }
+    else if (rxdata == "OUTP:STAB?") {
+        strTransmitData = QString::number(1);
+    }
+    else if (rxdata == "UNIT:INDEX?") {
+        strTransmitData = QString::number(5);
+    }
+    else if (rxdata == "SENS:MODE GAUGE") {
+        pressType = 0;
+        strTransmitData = "";
+    }
+    else if (rxdata == "SENS:MODE ABS") {
+        pressType = 1;
+        strTransmitData = "";
+    }
+    else if (rxdata == "SENS:ABS?") {
+        strTransmitData = QString::number(pressType);
+    }
+    else if (rxdata == "CALC:LIM:UPP 3.825") {
+        strPressLimit = "+3.8250004E+000";
+        strTransmitData = "";
+    }
+    else if (rxdata == "CALC:LIM:UPP 10.0") {
+        strPressLimit = "+9.9999998E+000";
+        strTransmitData = "";
+    }
+    else if (rxdata == "CALC:LIM:UPP?") {
+        strTransmitData = strPressLimit;
+    }
 }
 
 /**
@@ -181,7 +325,10 @@ void MyServerView::onPortPushButtonClicked()
     portWindow->setWindowTitle("TCP Port Number");
     portWindow->resize(200, 80);
     portWindow->setModal(true);
-    portWindow->setWindowFlags(Qt::Drawer);
+
+    portWindow->setWindowFlags((portWindow->windowFlags())
+                                  & (~Qt::WindowContextHelpButtonHint));
+
     portWindow->setAttribute(Qt::WA_DeleteOnClose);
 
     QVBoxLayout *vLayot = new QVBoxLayout(portWindow);
@@ -210,6 +357,7 @@ void MyServerView::onSetPortClicked()
 {
     quint16 portNumber = 0;
     bool correctInput = false;
+    QString DeviceName;
 
     correctInput = portEdit->hasAcceptableInput();
 
@@ -236,8 +384,31 @@ void MyServerView::onSetPortClicked()
         delete portWindow;
         portWindow = nullptr;
     }
-}
 
+    switch (portNumber)
+    {
+    case 3001:
+        DeviceType = Multimeter;
+        DeviceName = "Device: Multimeter";
+        ui->eolComboBox->setCurrentIndex(0);
+        break;
+    case 4001:
+        DeviceType = Chamber;
+        DeviceName = "Device: Chamber";
+        ui->eolComboBox->setCurrentIndex(1);
+        break;
+    case 4040:
+        DeviceType = Calibrator;
+        DeviceName = "Device: Calibrator";
+        ui->eolComboBox->setCurrentIndex(0);
+        break;
+    default:
+        DeviceType = Unknown;
+        DeviceName = "Device: Unknown";
+        break;
+    }
+    emit setTitle(DeviceName);
+}
 
 /**
  * @brief MyServerView::onClearWindowButtonClicked
@@ -255,3 +426,4 @@ void MyServerView::onSetContainer(const QHash<QString, QString> &container)
 {
     cmdContainer = container;
 }
+
